@@ -14,29 +14,17 @@ class Login extends BaseController
         return view('login/index');
     }
 
-    public function attempt()
+    public function login()
     {
-        $rules = [
-            'username' => 'required',
-            'password' => 'required',
-        ];
+        $data = $this->request->getJSON(true);
+        $username = $data['username'] ?? null;
+        $password = $data['password'] ?? null;
 
-        $json = $this->request->getJSON(true);
-        $username = $this->request->getPost('username') ?? (is_array($json) ? ($json['username'] ?? null) : null);
-        $password = $this->request->getPost('password') ?? (is_array($json) ? ($json['password'] ?? null) : null);
-
-        if ($username === null || $password === null) {
+        if (empty($username) || empty($password)) {
             return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Felhasználónév és jelszó szükséges.',
-            ])->setStatusCode(400);
-        }
-
-        $validation = \Config\Services::validation()->setRules($rules);
-        if (! $validation->run(['username' => $username, 'password' => $password])) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => implode(' ', $validation->getErrors()),
+                'success'    => false,
+                'message'    => 'Felhasználónév és jelszó szükséges.',
+                'csrf_token' => csrf_hash(),
             ])->setStatusCode(400);
         }
 
@@ -46,10 +34,11 @@ class Login extends BaseController
             ->get()
             ->getRowArray();
 
-        if ($user === null || ! password_verify($password, $user['password'])) {
+        if ($user === null || !password_verify($password, $user['password'])) {
             return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Helytelen felhasználónév vagy jelszó.',
+                'success'    => false,
+                'message'    => 'Helytelen felhasználónév vagy jelszó.',
+                'csrf_token' => csrf_hash(),
             ])->setStatusCode(401);
         }
 
@@ -59,17 +48,23 @@ class Login extends BaseController
             'logged_in' => true,
         ]);
 
+        session()->setFlashdata('success', 'Sikeres bejelentkezés');
+
         return $this->response->setJSON([
-            'success'  => true,
-            'message'   => 'Sikeresen bejelentkeztél, ' . $user['username'],
-            'redirect'  => base_url('/'),
+            'success'    => true,
+            'message'    => 'Sikeresen bejelentkeztél, ' . $user['username'],
+            'redirect'   => base_url('/'),
+            'csrf_token' => csrf_hash(),
         ])->setStatusCode(200);
     }
-
 
     public function logout()
     {
         session()->destroy();
-        return redirect()->to('/login')->with('message', 'Sikeresen kijelentkeztél.');
+        return $this->response->setJSON([
+            'success'    => true,
+            'redirect'   => base_url('login'),
+            'csrf_token' => csrf_hash(),
+        ])->setStatusCode(200);
     }
 }

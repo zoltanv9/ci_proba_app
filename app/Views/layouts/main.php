@@ -5,9 +5,13 @@
     <title><?= $this->renderSection('title') ?></title>
     
     <link rel="stylesheet" href="<?= base_url('css/lib/bootstrap.min.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('css/lib/bootstrap-icons.min.css') ?>">
+    <style>
+        .bg-custom-light { background-color:rgb(241, 241, 241); }
+    </style>
     <?= $this->renderSection('styles') ?>
 </head>
-<body>
+<body class="bg-custom-light min-vh-100">
 
     <?= $this->renderSection('content') ?>
 

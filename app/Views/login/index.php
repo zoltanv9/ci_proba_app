@@ -6,7 +6,10 @@
 
 <?= $this->section('content') ?>
     <div id="app" class="container mt-5 pt-5">
-        <login-component></login-component>
+        <login-component
+            login-api-url="<?= esc(base_url('sessions')) ?>"
+            csrf-token="<?= esc(csrf_hash()) ?>"
+        ></login-component>
     </div>
 <?= $this->endSection() ?>
 
@@ -16,10 +19,14 @@
 
     const LoginComponent = {
         name: 'login-component',
+        props: {
+            loginApiUrl: { type: String, required: true },
+            csrfToken:   { type: String, required: true }
+        },
         template: `
         <div>
             <div class="row justify-content-center">
-                <div class="col-md-6 col-lg-5 col-xl-4">
+                <div class="col-lg-5">
                     <div class="card shadow-lg border-0">
                         <div class="card-header bg-primary text-white text-center py-3">
                             <h4 class="mb-0 fw-bold">Bejelentkezés</h4>
@@ -63,8 +70,6 @@
                         </div>
                     </div>
                 </div>
-
-
             </div>
             <div v-if="errorMessage" class="position-fixed alert alert-danger alert-dismissible fade show" style="top: 20px; right: 20px; z-index: 1000;" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -79,9 +84,8 @@
                 password: '',
                 isLoading: false,
                 errorMessage: '',
-                loginApiUrl: '<?= base_url('/login') ?>',
-                csrfToken: '<?= csrf_hash() ?>'
-            }
+                activeCsrfToken: this.csrfToken
+            };
         },
         methods: {
             handleLogin() {
@@ -97,23 +101,19 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.csrfToken
+                        'X-CSRF-TOKEN': this.activeCsrfToken
                     },
                     body: JSON.stringify(loginData)
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(errorData => {
-                            throw new Error(errorData.message || 'Bejelentkezés sikertelen.');
-                        });
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
+                    if (data.csrf_token) this.activeCsrfToken = data.csrf_token;
                     this.isLoading = false;
-                    
                     if (data.success) {
                         window.location.href = data.redirect;
+                    } else {
+                        this.errorMessage = data.message || 'Bejelentkezés sikertelen.';
+                        this.password = '';
                     }
                 })
                 .catch(error => {
@@ -129,11 +129,6 @@
         components: {
             'login-component': LoginComponent
         },
-        data() {
-            return {
-                loginApiUrl: '<?= base_url('api/auth/login') ?>'
-            }
-        }
     });
 
     app.mount('#app');
